@@ -161,10 +161,6 @@ var WaveSurfer = {
         return this.backend.getDuration();
     },
 
-    getCurrentTime: function () {
-        return this.backend.getCurrentTime();
-    },
-
     play: function (start, end) {
         this.fireEvent('interaction', this.play.bind(this, start, end));
         this.backend.play(start, end);
@@ -244,6 +240,26 @@ var WaveSurfer = {
      */
     getVolume: function () {
         return this.backend.getVolume();
+    },
+
+    /**
+     * Get the current play time.
+     */
+    getCurrentTime: function () {
+        return this.backend.getCurrentTime();
+    },
+
+    /**
+     * Set the current play time in seconds.
+     *
+     * @param {Number} seconds A positive number in seconds. E.g. 10 means 10 seconds, 60 means 1 minute
+     */
+    setCurrentTime: function (seconds) {
+        if(this.getDuration() >= seconds) {
+            this.seekTo(1);
+        } else {
+            this.seekTo(seconds/this.getDuration());
+        }
     },
 
     /**
@@ -546,11 +562,12 @@ var WaveSurfer = {
     /**
      * Exports PCM data into a JSON array and opens in a new window.
      */
-    exportPCM: function (length, accuracy, noWindow) {
+    exportPCM: function (length, accuracy, noWindow, start) {
         length = length || 1024;
+        start = start || 0;
         accuracy = accuracy || 10000;
         noWindow = noWindow || false;
-        var peaks = this.backend.getPeaks(length, accuracy);
+        var peaks = this.backend.getPeaks(length, start);
         var arr = [].map.call(peaks, function (val) {
             return Math.round(val * accuracy) / accuracy;
         });
@@ -626,6 +643,24 @@ WaveSurfer.create = function (params) {
 };
 
 WaveSurfer.util = {
+    requestAnimationFrame: (
+        window.requestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        window.oRequestAnimationFrame ||
+        window.msRequestAnimationFrame ||
+        function (callback, element) { setTimeout(callback, 1000 / 60); }
+    ).bind(window),
+
+    frame: function (func) {
+        return function () {
+            var my = this, args = arguments;
+            WaveSurfer.util.requestAnimationFrame(function () {
+                func.apply(my, args);
+            });
+        };
+    },
+
     extend: function (dest) {
         var sources = Array.prototype.slice.call(arguments, 1);
         sources.forEach(function (source) {
@@ -800,6 +835,18 @@ WaveSurfer.Observer = {
 /* Make the main WaveSurfer object an observer */
 WaveSurfer.util.extend(WaveSurfer, WaveSurfer.Observer);
 
+/* jscs:disable */
+
+/**
+ * @see https://github.com/Infinity/Kali
+ */
+!function(e){function t(i){if(r[i])return r[i].exports;var n=r[i]={exports:{},id:i,loaded:!1};return e[i].call(n.exports,n,n.exports,t),n.loaded=!0,n.exports}var r={};return t.m=e,t.c=r,t.p="",t(0)}([function(e,t,r){e.exports=r(1)},function(e,t,r){function i(e){return Math.floor(e)}var n=r(2),s=function(){function e(){this.is_initialized=!1,this.sample_rate=44100,this.channels=0,this.quick_search=!1,this.factor=0,this.search=0,this.segment=0,this.overlap=0,this.process_size=0,this.samples_in=0,this.samples_out=0,this.segments_total=0,this.skip_total=0}return e}(),o=function(){function e(e){var t=new s;t.channels=e,t.input_fifo=new n(Float32Array),t.output_fifo=new n(Float32Array),this.t=t}return e.prototype.difference=function(e,t,r){for(var i=0,n=0,n=0;r>n;n++)i+=Math.pow(e[n]-t[n],2);return i},e.prototype.tempo_best_overlap_position=function(e,t){var r,i,n,s=e.overlap_buf,o=e.search+1>>>1,a=64,p=i=e.quick_search?o:0,u=this.difference(t.subarray(e.channels*p),s,e.channels*e.overlap),f=0;if(e.quick_search){do{for(f=-1;1>=f;f+=2)for(r=1;(4>r||64==a)&&(p=o+f*r*a,!(0>p||p>=e.search));r++)n=this.difference(t.subarray(e.channels*p),s,e.channels*e.overlap),u>n&&(u=n,i=p);o=i}while(a>>>=2)}else for(p=1;p<e.search;p++)n=this.difference(t.subarray(e.channels*p),s,e.channels*e.overlap),u>n&&(u=n,i=p);return i},e.prototype.tempo_overlap=function(e,t,r,i){var n=0,s=0,o=0,a=1/e.overlap;for(n=0;n<e.overlap;n++){var p=a*n,u=1-p;for(s=0;s<e.channels;s++,o++)i[o]=t[o]*u+r[o]*p}},e.prototype.process=function(){for(var e=this.t;e.input_fifo.occupancy()>=e.process_size;){var t,r;e.segments_total?(r=this.tempo_best_overlap_position(e,e.input_fifo.read_ptr(0)),this.tempo_overlap(e,e.overlap_buf,e.input_fifo.read_ptr(e.channels*r),e.output_fifo.write_ptr(e.overlap))):(r=e.search/2,e.output_fifo.write(e.input_fifo.read_ptr(e.channels*r,e.overlap),e.overlap)),e.output_fifo.write(e.input_fifo.read_ptr(e.channels*(r+e.overlap)),e.segment-2*e.overlap);var n=e.channels*e.overlap;e.overlap_buf.set(e.input_fifo.read_ptr(e.channels*(r+e.segment-e.overlap)).subarray(0,n)),e.segments_total++,t=i(e.factor*(e.segment-e.overlap)+.5),e.input_fifo.read(null,t)}},e.prototype.input=function(e,t,r){void 0===t&&(t=null),void 0===r&&(r=0),null==t&&(t=e.length);var i=this.t;i.samples_in+=t,i.input_fifo.write(e,t)},e.prototype.output=function(e){var t=this.t,r=Math.min(e.length,t.output_fifo.occupancy());return t.samples_out+=r,t.output_fifo.read(e,r),r},e.prototype.flush=function(){var e=this.t,t=i(e.samples_in/e.factor+.5),r=t>e.samples_out?t-e.samples_out:0,n=new Float32Array(128*e.channels);if(r>0){for(;e.output_fifo.occupancy()<r;)this.input(n,128),this.process();e.samples_in=0}},e.prototype.setup=function(t,r,n,s,o,a){void 0===n&&(n=!1),void 0===s&&(s=null),void 0===o&&(o=null),void 0===a&&(a=null);var p=1,u=this.t;u.sample_rate=t,null==s&&(s=Math.max(10,e.segments_ms[p]/Math.max(Math.pow(r,e.segments_pow[p]),1))),null==o&&(o=s/e.searches_div[p]),null==a&&(a=s/e.overlaps_div[p]);var f;if(u.quick_search=n,u.factor=r,u.segment=i(t*s/1e3+.5),u.search=i(t*o/1e3+.5),u.overlap=Math.max(i(t*a/1e3+4.5),16),2*u.overlap>u.segment&&(u.overlap-=8),u.is_initialized){var h=new Float32Array(u.overlap*u.channels),l=0;u.overlap*u.channels<u.overlap_buf.length&&(l=u.overlap_buf.length-u.overlap*u.channels),h.set(u.overlap_buf.subarray(l,u.overlap_buf.length)),u.overlap_buf=h}else u.overlap_buf=new Float32Array(u.overlap*u.channels);f=i(Math.ceil(r*(u.segment-u.overlap))),u.process_size=Math.max(f+u.overlap,u.segment)+u.search,u.is_initialized||u.input_fifo.reserve(i(u.search/2)),u.is_initialized=!0},e.prototype.setTempo=function(e){var t=this.t;this.setup(t.sample_rate,e,t.quick_search)},e.segments_ms=[82,82,35,20],e.segments_pow=[0,1,.33,1],e.overlaps_div=[6.833,7,2.5,2],e.searches_div=[5.587,6,2.14,2],e}();window&&(window.Kali=o),e.exports=o},function(e,t){var r=function(){function e(e){this.begin=0,this.end=0,this.typedArrayConstructor=e,this.buffer=new e(16384)}return e.prototype.clear=function(){this.begin=this.end=0},e.prototype.reserve=function(e){for(this.begin==this.end&&this.clear();;){if(this.end+e<this.buffer.length){var t=this.end;return this.end+=e,t}if(this.begin>16384)this.buffer.set(this.buffer.subarray(this.begin,this.end)),this.end-=this.begin,this.begin=0;else{var r=new this.typedArrayConstructor(this.buffer.length+e);r.set(this.buffer),this.buffer=r}}},e.prototype.write=function(e,t){var r=this.reserve(t);this.buffer.set(e.subarray(0,t),r)},e.prototype.write_ptr=function(e){var t=this.reserve(e);return this.buffer.subarray(t,t+e)},e.prototype.read=function(e,t){t+this.begin>this.end&&console.error("Read out of bounds",t,this.end,this.begin),null!=e&&e.set(this.buffer.subarray(this.begin,this.begin+t)),this.begin+=t},e.prototype.read_ptr=function(e,t){return void 0===t&&(t=-1),t>this.occupancy()&&console.error("Read Pointer out of bounds",t),0>t&&(t=this.occupancy()),this.buffer.subarray(this.begin+e,this.begin+t)},e.prototype.occupancy=function(){return this.end-this.begin},e}();e.exports=r}]);
+
+WaveSurfer.util.Kali = window.Kali;
+
+/* jscs:enable */
+/* jshint ignore:end */
+
 'use strict';
 
 WaveSurfer.WebAudio = {
@@ -837,6 +884,7 @@ WaveSurfer.WebAudio = {
         this.lastPlay = this.ac.currentTime;
         this.startPosition = 0;
         this.scheduledPause = null;
+        this.playbackRate = this.params.audioRate || 1;
 
         this.states = [
             Object.create(WaveSurfer.WebAudio.state.playing),
@@ -847,9 +895,7 @@ WaveSurfer.WebAudio = {
         this.createVolumeNode();
         this.createScriptNode();
         this.createAnalyserNode();
-
         this.setState(this.PAUSED_STATE);
-        this.setPlaybackRate(this.params.audioRate);
         this.setLength(0);
     },
 
@@ -1020,6 +1066,9 @@ WaveSurfer.WebAudio = {
     getPeaks: function (length, first, last) {
         if (this.peaks) { return this.peaks; }
 
+        first = first || 0;
+        last = last || length - 1;
+
         this.setLength(length);
 
         var sampleSize = this.buffer.length / length;
@@ -1109,7 +1158,13 @@ WaveSurfer.WebAudio = {
         this.startPosition = 0;
         this.lastPlay = this.ac.currentTime;
         this.buffer = buffer;
-        this.createSource();
+        this.originalBuffer = buffer;
+
+        if (this.playbackRate === 1) {
+          this.createSource();
+        } else {
+          this.setPlaybackRate(this.playbackRate);
+        }
     },
 
     createSource: function () {
@@ -1120,7 +1175,6 @@ WaveSurfer.WebAudio = {
         this.source.start = this.source.start || this.source.noteGrainOn;
         this.source.stop = this.source.stop || this.source.noteOff;
 
-        this.source.playbackRate.value = this.playbackRate;
         this.source.buffer = this.buffer;
         this.source.connect(this.analyser);
     },
@@ -1162,7 +1216,7 @@ WaveSurfer.WebAudio = {
     },
 
     getPlayedTime: function () {
-        return (this.ac.currentTime - this.lastPlay) * this.playbackRate;
+        return (this.ac.currentTime - this.lastPlay);
     },
 
     /**
@@ -1230,11 +1284,31 @@ WaveSurfer.WebAudio = {
      */
     setPlaybackRate: function (value) {
         value = value || 1;
-        if (this.isPaused()) {
-            this.playbackRate = value;
-        } else {
+        this.playbackRate = value;
+
+        var isPaused = this.isPaused();
+
+        if (!isPaused) {
             this.pause();
-            this.playbackRate = value;
+        }
+
+        var output = new Float32Array(this.originalBuffer.length / value);
+        var kali = new WaveSurfer.util.Kali(1);
+        kali.setup(this.originalBuffer.sampleRate, value, true);
+        kali.input(this.originalBuffer.getChannelData(0));
+        kali.process();
+        kali.output(output);
+
+        this.buffer = this.ac.createBuffer(1, output.length, this.originalBuffer.sampleRate);
+        var data = this.buffer.getChannelData(0);
+
+        for (var i = 0; i < output.length; i++) {
+            data[i] = output[i];
+        }
+
+        if (isPaused) {
+            this.createSource();
+        } else {
             this.play();
         }
     }
@@ -1398,6 +1472,16 @@ WaveSurfer.util.extend(WaveSurfer.MediaElement, {
             my.fireEvent('finish');
         });
 
+        // Listen to and relay play and pause events to enable
+        // playback control from the external media element
+        media.addEventListener('play', function () {
+            my.fireEvent('play');
+        });
+
+        media.addEventListener('pause', function () {
+            my.fireEvent('pause');
+        });
+
         this.media = media;
         this.peaks = peaks;
         this.onPlayEnd = null;
@@ -1456,7 +1540,6 @@ WaveSurfer.util.extend(WaveSurfer.MediaElement, {
         this.seekTo(start);
         this.media.play();
         end && this.setPlayEnd(end);
-        this.fireEvent('play');
     },
 
     /**
@@ -1465,7 +1548,6 @@ WaveSurfer.util.extend(WaveSurfer.MediaElement, {
     pause: function () {
         this.media && this.media.pause();
         this.clearPlayEnd();
-        this.fireEvent('pause');
     },
 
     setPlayEnd: function (end) {
@@ -1714,7 +1796,7 @@ WaveSurfer.Drawer = {
     destroy: function () {
         this.unAll();
         if (this.wrapper) {
-            this.container.removeChild(this.wrapper);
+            if (this.wrapper.parentNode == this.container) { this.container.removeChild(this.wrapper); }
             this.wrapper = null;
         }
     },
@@ -1747,7 +1829,8 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.Canvas, {
                 zIndex: 1,
                 left: 0,
                 top: 0,
-                bottom: 0
+                bottom: 0,
+                pointerEvents: 'none'
             })
         );
         this.waveCc = waveCanvas.getContext('2d');
@@ -1765,7 +1848,8 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.Canvas, {
                 boxSizing: 'border-box',
                 borderRightStyle: 'solid',
                 borderRightWidth: this.params.cursorWidth + 'px',
-                borderRightColor: this.params.cursorColor
+                borderRightColor: this.params.cursorColor,
+                pointerEvents: 'none'
             })
         );
 
@@ -1802,7 +1886,7 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.Canvas, {
         }
     },
 
-    drawBars: function (peaks, channelIndex, start, end) {
+    drawBars: WaveSurfer.util.frame(function (peaks, channelIndex, start, end) {
         var my = this;
         // Split channels
         if (peaks[0] instanceof Array) {
@@ -1861,9 +1945,9 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.Canvas, {
                 cc.fillRect(i + $, halfH - h + offsetY, bar + $, h * 2);
             }
         }, this);
-    },
+    }),
 
-    drawWave: function (peaks, channelIndex, start, end) {
+    drawWave: WaveSurfer.util.frame(function (peaks, channelIndex, start, end) {
         var my = this;
         // Split channels
         if (peaks[0] instanceof Array) {
@@ -1938,7 +2022,7 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.Canvas, {
             // Always draw a median line
             cc.fillRect(0, halfH + offsetY - $, this.width, $);
         }, this);
-    },
+    }),
 
     updateProgress: function (pos) {
         this.style(this.progressWave, { width: pos + 'px' });
@@ -1984,7 +2068,8 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
                 boxSizing: 'border-box',
                 borderRightStyle: 'solid',
                 borderRightWidth: this.params.cursorWidth + 'px',
-                borderRightColor: this.params.cursorColor
+                borderRightColor: this.params.cursorColor,
+                pointerEvents: 'none'
             })
         );
 
@@ -2003,7 +2088,7 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
             this.removeCanvas();
         }
 
-        for (var i in this.canvases) {
+        this.canvases.forEach(function (entry, i) {
             // Add some overlap to prevent vertical white stripes, keep the width even for simplicity.
             var canvasWidth = this.maxCanvasWidth + 2 * Math.ceil(this.params.pixelRatio / 2);
 
@@ -2011,9 +2096,9 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
                 canvasWidth = this.width - (this.maxCanvasWidth * (this.canvases.length - 1));
             }
 
-            this.updateDimensions(this.canvases[i], canvasWidth, this.height);
-            this.clearWaveForEntry(this.canvases[i]);
-        }
+            this.updateDimensions(entry, canvasWidth, this.height);
+            this.clearWaveForEntry(entry);
+        }, this);
     },
 
     addCanvas: function () {
@@ -2027,7 +2112,8 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
                 left: leftOffset + 'px',
                 top: 0,
                 bottom: 0,
-                height: '100%'
+                height: '100%',
+                pointerEvents: 'none'
             })
         );
         entry.waveCtx = entry.wave.getContext('2d');
@@ -2066,21 +2152,21 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
 
         entry.waveCtx.canvas.width = width;
         entry.waveCtx.canvas.height = height;
-        this.style(entry.waveCtx.canvas, { width: elementWidth + 'px'});
+        this.style(entry.waveCtx.canvas, { width: elementWidth + 'px' });
 
-        this.style(this.progressWave, { display: 'block'});
+        this.style(this.progressWave, { display: 'block' });
 
         if (this.hasProgressCanvas) {
             entry.progressCtx.canvas.width = width;
             entry.progressCtx.canvas.height = height;
-            this.style(entry.progressCtx.canvas, { width: elementWidth + 'px'});
+            this.style(entry.progressCtx.canvas, { width: elementWidth + 'px' });
         }
     },
 
     clearWave: function () {
-        for (var i in this.canvases) {
-            this.clearWaveForEntry(this.canvases[i]);
-        }
+        this.canvases.forEach(function (entry) {
+            this.clearWaveForEntry(entry);
+        }, this);
     },
 
     clearWaveForEntry: function (entry) {
@@ -2090,16 +2176,15 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
         }
     },
 
-    drawBars: function (peaks, channelIndex, start, end) {
-        var my = this;
+    drawBars: WaveSurfer.util.frame(function (peaks, channelIndex, start, end) {
         // Split channels
         if (peaks[0] instanceof Array) {
             var channels = peaks;
             if (this.params.splitChannels) {
                 this.setHeight(channels.length * this.params.height * this.params.pixelRatio);
                 channels.forEach(function(channelPeaks, i) {
-                    my.drawBars(channelPeaks, i, start, end);
-                });
+                    this.drawBars(channelPeaks, i, start, end);
+                }, this);
                 return;
             } else {
                 peaks = channels[0];
@@ -2108,7 +2193,7 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
 
         // Bar wave draws the bottom only as a reflection of the top,
         // so we don't need negative values
-        var hasMinVals = [].some.call(peaks, function (val) { return val < 0; });
+        var hasMinVals = [].some.call(peaks, function (val) {return val < 0;});
         // Skip every other value if there are negatives.
         var peakIndexScale = 1;
         if (hasMinVals) {
@@ -2139,18 +2224,17 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
             var h = Math.round(peak / absmax * halfH);
             this.fillRect(i + this.halfPixel, halfH - h + offsetY, bar + this.halfPixel, h * 2);
         }
-    },
+    }),
 
-    drawWave: function (peaks, channelIndex, start, end) {
-        var my = this;
+    drawWave: WaveSurfer.util.frame(function (peaks, channelIndex, start, end) {
         // Split channels
         if (peaks[0] instanceof Array) {
             var channels = peaks;
             if (this.params.splitChannels) {
                 this.setHeight(channels.length * this.params.height * this.params.pixelRatio);
                 channels.forEach(function(channelPeaks, i) {
-                    my.drawWave(channelPeaks, i, start, end);
-                });
+                    this.drawWave(channelPeaks, i, start, end);
+                }, this);
                 return;
             } else {
                 peaks = channels[0];
@@ -2184,17 +2268,14 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
 
         // Always draw a median line
         this.fillRect(0, halfH + offsetY - this.halfPixel, this.width, this.halfPixel);
-    },
+    }),
 
     drawLine: function (peaks, absmax, halfH, offsetY, start, end) {
-        for (var index in this.canvases) {
-            var entry = this.canvases[index];
-
+        this.canvases.forEach (function (entry) {
             this.setFillStyles(entry);
-
             this.drawLineToContext(entry, entry.waveCtx, peaks, absmax, halfH, offsetY, start, end);
             this.drawLineToContext(entry, entry.progressCtx, peaks, absmax, halfH, offsetY, start, end);
-        }
+        }, this);
     },
 
     drawLineToContext: function (entry, ctx, peaks, absmax, halfH, offsetY, start, end) {
@@ -2237,11 +2318,10 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
     fillRect: function (x, y, width, height) {
         var startCanvas = Math.floor(x / this.maxCanvasWidth);
         var endCanvas = Math.min(Math.ceil((x + width) / this.maxCanvasWidth) + 1,
-                                 this.canvases.length);
+                                this.canvases.length);
         for (var i = startCanvas; i < endCanvas; i++) {
             var entry = this.canvases[i],
                 leftOffset = i * this.maxCanvasWidth;
-
             var intersection = {
                 x1: Math.max(x, i * this.maxCanvasWidth),
                 y1: y,
@@ -2284,13 +2364,13 @@ WaveSurfer.util.extend(WaveSurfer.Drawer.MultiCanvas, {
     },
 
     /**
-     * Combine all available canvasses together.
+     * Combine all available canvases together.
      *
      * @param {String} type - an optional value of a format type. Default is image/png.
      * @param {Number} quality - an optional value between 0 and 1. Default is 0.92.
      *
      */
-    getImage: function(type, quality) {
+    getImage: function (type, quality) {
         var availableCanvas = [];
         this.canvases.forEach(function (entry) {
             availableCanvas.push(entry.wave.toDataURL(type, quality));

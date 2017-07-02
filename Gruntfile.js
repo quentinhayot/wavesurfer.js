@@ -21,6 +21,7 @@ module.exports = function (grunt) {
                 src: [
                     'src/wavesurfer.js',
                     'src/util.js',
+                    'src/kali.js',
                     'src/webaudio.js',
                     'src/mediaelement.js',
                     'src/drawer.js',
