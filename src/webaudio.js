@@ -35,7 +35,6 @@ WaveSurfer.WebAudio = {
         this.lastPlay = this.ac.currentTime;
         this.startPosition = 0;
         this.scheduledPause = null;
-        this.playbackRate = this.params.audioRate || 1;
 
         this.states = [
             Object.create(WaveSurfer.WebAudio.state.playing),
@@ -46,7 +45,9 @@ WaveSurfer.WebAudio = {
         this.createVolumeNode();
         this.createScriptNode();
         this.createAnalyserNode();
+
         this.setState(this.PAUSED_STATE);
+        this.setPlaybackRate(this.params.audioRate);
         this.setLength(0);
     },
 
@@ -309,13 +310,7 @@ WaveSurfer.WebAudio = {
         this.startPosition = 0;
         this.lastPlay = this.ac.currentTime;
         this.buffer = buffer;
-        this.originalBuffer = buffer;
-
-        if (this.playbackRate === 1) {
-          this.createSource();
-        } else {
-          this.setPlaybackRate(this.playbackRate);
-        }
+        this.createSource();
     },
 
     createSource: function () {
@@ -326,6 +321,7 @@ WaveSurfer.WebAudio = {
         this.source.start = this.source.start || this.source.noteGrainOn;
         this.source.stop = this.source.stop || this.source.noteOff;
 
+        this.source.playbackRate.value = this.playbackRate;
         this.source.buffer = this.buffer;
         this.source.connect(this.analyser);
     },
@@ -367,7 +363,7 @@ WaveSurfer.WebAudio = {
     },
 
     getPlayedTime: function () {
-        return (this.ac.currentTime - this.lastPlay);
+        return (this.ac.currentTime - this.lastPlay) * this.playbackRate;
     },
 
     /**
@@ -435,31 +431,11 @@ WaveSurfer.WebAudio = {
      */
     setPlaybackRate: function (value) {
         value = value || 1;
-        this.playbackRate = value;
-
-        var isPaused = this.isPaused();
-
-        if (!isPaused) {
-            this.pause();
-        }
-
-        var output = new Float32Array(this.originalBuffer.length / value);
-        var kali = new WaveSurfer.util.Kali(1);
-        kali.setup(this.originalBuffer.sampleRate, value, true);
-        kali.input(this.originalBuffer.getChannelData(0));
-        kali.process();
-        kali.output(output);
-
-        this.buffer = this.ac.createBuffer(1, output.length, this.originalBuffer.sampleRate);
-        var data = this.buffer.getChannelData(0);
-
-        for (var i = 0; i < output.length; i++) {
-            data[i] = output[i];
-        }
-
-        if (isPaused) {
-            this.createSource();
+        if (this.isPaused()) {
+            this.playbackRate = value;
         } else {
+            this.pause();
+            this.playbackRate = value;
             this.play();
         }
     }
