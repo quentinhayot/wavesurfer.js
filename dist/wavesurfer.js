@@ -1,5 +1,5 @@
 /*!
- * wavesurfer.js 2.0.0-beta01 (Tue May 02 2017 19:46:40 GMT+0200 (CEST))
+ * wavesurfer.js 2.0.0-beta01 (Wed Jul 12 2017 01:14:14 GMT+0200 (CEST))
  * https://github.com/katspaugh/wavesurfer.js
  * @license CC-BY-3.0
  */
@@ -446,9 +446,9 @@ var WebAudio = function (_util$Observer) {
         key: 'createScriptNode',
         value: function createScriptNode() {
             if (this.ac.createScriptProcessor) {
-                this.scriptNode = this.ac.createScriptProcessor(this.scriptBufferSize);
+                this.scriptNode = this.ac.createScriptProcessor(WebAudio.scriptBufferSize);
             } else {
-                this.scriptNode = this.ac.createJavaScriptNode(this.scriptBufferSize);
+                this.scriptNode = this.ac.createJavaScriptNode(WebAudio.scriptBufferSize);
             }
 
             this.scriptNode.connect(this.ac.destination);
@@ -2622,7 +2622,7 @@ var Drawer = function (_util$Observer) {
         value: function destroy() {
             this.unAll();
             if (this.wrapper) {
-                this.container.removeChild(this.wrapper);
+                if (this.wrapper.parentNode == this.container) this.container.removeChild(this.wrapper);
                 this.wrapper = null;
             }
         }
@@ -3213,12 +3213,10 @@ var WaveSurfer = function (_util$Observer) {
             scrollParent: false,
             skipLength: 2,
             splitChannels: false,
-            waveColor: '#999'
-        };
+            waveColor: '#999' };
         _this.backends = {
             MediaElement: _mediaelement2.default,
-            WebAudio: _webaudio2.default
-        };
+            WebAudio: _webaudio2.default };
         _this.util = util;
         _this.params = util.extend({}, _this.defaultParams, params);
 
@@ -3313,7 +3311,6 @@ var WaveSurfer = function (_util$Observer) {
         _this._onResize = util.debounce(function () {
             if (prevWidth != _this.drawer.wrapper.clientWidth) {
                 prevWidth = _this.drawer.wrapper.clientWidth;
-                _this.empty();
                 _this.drawBuffer();
             }
         }, typeof _this.params.responsive === 'number' ? _this.params.responsive : 100);

@@ -1,5 +1,5 @@
 /*!
- * wavesurfer.js 2.0.0-beta01 (Tue May 02 2017 19:46:40 GMT+0200 (CEST))
+ * wavesurfer.js 2.0.0-beta01 (Wed Jul 12 2017 01:14:14 GMT+0200 (CEST))
  * https://github.com/katspaugh/wavesurfer.js
  * @license CC-BY-3.0
  */
